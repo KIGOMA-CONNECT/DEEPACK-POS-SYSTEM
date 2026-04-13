@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEEPACK Business Center</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23BA7517'/><text y='.9em' font-size='70' x='15' fill='white'>D</text></svg>">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --amber:#BA7517;--amber-dark:#854F0B;--amber-light:#FAEEDA;
+    --green:#1D9E75;--red:#E24B4A;--blue:#378ADD;
+    --bg:#ffffff;--bg2:#f5f4f0;--bg3:#efede8;
+    --text:#1a1a1a;--text2:#666;--text3:#999;
+    --border:rgba(0,0,0,0.1);--border2:rgba(0,0,0,0.15);
+    --radius:8px;--radius-lg:12px;
+  }
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:var(--text);background:var(--bg3);min-height:100vh}
+  
+  /* Loading */
+  #ld{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000}
+  .ld-logo{width:56px;height:56px;border-radius:14px;background:var(--amber);display:flex;align-items:center;justify-content:center;color:white;font-size:28px;font-weight:700;margin-bottom:1rem}
+  .ld-title{font-size:18px;font-weight:600;margin-bottom:.25rem}
+  .ld-sub{font-size:13px;color:var(--text2);margin-bottom:1.5rem}
+  .ld-bar{width:220px;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden}
+  .ld-fill{height:100%;background:var(--amber);border-radius:2px;animation:lda 1.8s ease-in-out infinite}
+  @keyframes lda{0%{width:0;margin-left:0}50%{width:60%;margin-left:20%}100%{width:0;margin-left:100%}}
+
+  /* Layout */
+  #app{display:none;min-height:100vh}
+  header{background:var(--bg);border-bottom:1px solid var(--border);padding:.75rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:100}
+  .h-left{display:flex;align-items:center;gap:10px}
+  .h-logo{width:36px;height:36px;border-radius:9px;background:var(--amber);display:flex;align-items:center;justify-content:center;color:white;font-size:16px;font-weight:700;flex-shrink:0}
+  .h-name{font-size:14px;font-weight:600}
+  .h-status{font-size:11px;color:var(--text2);display:flex;align-items:center;gap:5px;margin-top:1px}
+  .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .dot-g{background:#1D9E75}.dot-r{background:#E24B4A}.dot-a{background:#EF9F27}
+  .h-right{display:flex;align-items:center;gap:8px}
+  .sync-txt{font-size:11px;color:var(--text3)}
+
+  /* Nav */
+  nav{background:var(--bg);border-bottom:1px solid var(--border);padding:0 1.25rem;overflow-x:auto;display:flex;gap:0}
+  .nav-btn{padding:11px 14px;cursor:pointer;font-size:13px;color:var(--text2);border:none;border-bottom:2px solid transparent;background:transparent;white-space:nowrap;display:flex;align-items:center;gap:5px;font-weight:500}
+  .nav-btn.active{color:var(--amber);border-bottom-color:var(--amber);font-weight:600}
+  .nav-btn:hover:not(.active){color:var(--text)}
+  .nbadge{background:var(--red);color:white;font-size:10px;padding:1px 5px;border-radius:10px;display:none;font-weight:700}
+
+  /* Main */
+  main{padding:1.25rem;max-width:1200px;margin:0 auto}
+
+  /* Cards */
+  .card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:1rem}
+  .card-title{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.875rem}
+
+  /* Metrics */
+  .mg{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.25rem}
+  .met{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem}
+  .ml{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;font-weight:500}
+  .mv{font-size:22px;font-weight:700}
+  .ms{font-size:11px;color:var(--text3);margin-top:3px}
+
+  /* Sections */
+  .sec{display:none}.sec.active{display:block}
+
+  /* Alerts */
+  .alr{background:#FEF2F2;border:1px solid #FECACA;border-radius:var(--radius);padding:.75rem 1rem;margin-bottom:1rem;font-size:13px;color:#991B1B}
+  .alr strong{font-weight:600}
+  .succ{background:#F0FDF4;border:1px solid #BBF7D0;border-radius:var(--radius);padding:.75rem 1rem;margin-bottom:1rem;font-size:13px;color:#166534}
+
+  /* Weekly popup */
+  #wpop{background:linear-gradient(135deg,#FAEEDA,#FFF7ED);border:1px solid #FCD34D;border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1.25rem;position:relative;display:none}
+  .wpop-close{position:absolute;top:.75rem;right:.75rem;background:none;border:none;cursor:pointer;color:var(--text2);font-size:18px;line-height:1;padding:2px}
+
+  /* Table */
+  .tbl-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:9px 12px;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);background:var(--bg2);white-space:nowrap}
+  td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:var(--bg2)}
+
+  /* Badges */
+  .b{display:inline-block;padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600}
+  .bg{background:#DCFCE7;color:#166534}.br{background:#FEE2E2;color:#991B1B}
+  .ba{background:#FEF3C7;color:#92400E}.bb{background:#DBEAFE;color:#1E40AF}
+  .bgr{background:#F3F4F6;color:#374151}.bpur{background:#EDE9FE;color:#5B21B6}
+
+  /* Forms */
+  .fr{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:.875rem}
+  @media(max-width:600px){.fr{grid-template-columns:1fr}}
+  .fg{display:flex;flex-direction:column;gap:4px}
+  .fg label{font-size:12px;font-weight:600;color:var(--text2)}
+  .fg input,.fg select,.fg textarea{padding:8px 11px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);font-size:13px;outline:none;transition:border-color .15s}
+  .fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--amber)}
+  .fg textarea{height:60px;resize:vertical}
+
+  /* Buttons */
+  .btn{padding:8px 16px;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600;border:1px solid transparent;transition:all .15s}
+  .bta{background:var(--amber);color:#fff;border-color:var(--amber)}.bta:hover{background:var(--amber-dark)}
+  .btg{background:var(--green);color:#fff}.btg:hover{background:#0F6E56}
+  .bto{background:transparent;border-color:var(--border2);color:var(--text)}.bto:hover{background:var(--bg2)}
+  .btd{background:#FEE2E2;color:#991B1B;border-color:#FECACA}
+  .bts{padding:5px 11px;font-size:12px;border-radius:var(--radius);cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text);font-weight:500;transition:all .15s}.bts:hover{background:var(--bg2)}
+
+  /* Section header */
+  .sh{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px}
+  .sh-title{font-size:15px;font-weight:700}
+
+  /* Search */
+  .src{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap}
+  .src input,.src select{padding:8px 11px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);font-size:13px;outline:none}
+  .src input:focus,.src select:focus{border-color:var(--amber)}
+  .src input{flex:1;min-width:160px}
+
+  /* Collapsible */
+  .collapse{display:none}
+
+  /* Upload zone */
+  .upz{border:2px dashed var(--border2);border-radius:var(--radius-lg);padding:2rem 1rem;text-align:center;cursor:pointer;transition:border-color .2s;background:var(--bg2)}
+  .upz:hover{border-color:var(--amber);background:var(--amber-light)}
+  .upz input{display:none}
+  .upz label{cursor:pointer;display:block}
+
+  /* POS */
+  .pos-wrap{display:grid;grid-template-columns:1fr 340px;gap:1rem;align-items:start}
+  @media(max-width:740px){.pos-wrap{grid-template-columns:1fr}}
+  .ctabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem}
+  .ctab{padding:6px 14px;border:1px solid var(--border2);border-radius:20px;cursor:pointer;font-size:12px;font-weight:500;background:var(--bg);color:var(--text2);transition:all .15s}
+  .ctab.active{background:var(--amber);color:#fff;border-color:var(--amber)}
+  .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;max-height:480px;overflow-y:auto;padding-right:4px}
+  .pc{border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;cursor:pointer;transition:all .15s;background:var(--bg)}
+  .pc:hover:not(.oos){border-color:var(--amber);box-shadow:0 2px 8px rgba(186,117,23,0.12)}
+  .pc.oos{opacity:.5;cursor:not-allowed;background:var(--bg2)}
+  .pn{font-size:13px;font-weight:600;line-height:1.3;margin-bottom:5px}
+  .pp{font-size:15px;color:var(--amber);font-weight:700}
+  .pst{font-size:11px;color:var(--text2);margin-top:4px}
+  .pmar{font-size:10px;color:var(--text3);margin-top:2px}
+
+  /* Cart */
+  .cartbox{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;position:sticky;top:80px}
+  .cart-title{font-size:13px;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:.625rem;margin-bottom:.75rem;display:flex;align-items:center;justify-content:space-between}
+  .ci{display:flex;align-items:center;gap:7px;padding-bottom:.5rem;border-bottom:1px solid var(--border);margin-bottom:.5rem;font-size:12px}
+  .cin{flex:1;font-size:12px;font-weight:500;line-height:1.3}
+  .ciq{width:40px;padding:3px 5px;text-align:center;border:1px solid var(--border2);border-radius:5px;font-size:12px;font-weight:600}
+  .cis{min-width:65px;text-align:right;color:var(--text2);font-size:12px}
+  .tr{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
+  .prf{display:flex;justify-content:space-between;font-size:12px;color:#166534;padding:3px 0;font-weight:600}
+
+  /* Receipt */
+  .rcpt{display:none;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-top:1rem}
+  .rcpt-hdr{display:flex;justify-content:space-between;align-items:center;padding:.875rem 1.25rem;border-bottom:1px solid var(--border);background:var(--bg2)}
+  .rcpt-body{padding:1.5rem;font-family:'Courier New',monospace;font-size:12px;max-width:420px;margin:0 auto}
+  .rh{text-align:center;margin-bottom:.875rem}
+  .rdiv{border-top:1px dashed #ccc;margin:.625rem 0}
+  .rrow{display:flex;justify-content:space-between;font-size:11px;margin:3px 0}
+  .ritems{width:100%;font-size:11px;border-collapse:collapse;margin:.5rem 0}
+  .ritems th{font-size:10px;text-transform:uppercase;border-bottom:1px dashed #ccc;padding:4px 2px;text-align:left;font-weight:700}
+  .ritems td{padding:3px 2px;vertical-align:top}
+  .rftr{text-align:center;font-size:11px;color:var(--text2);margin-top:.875rem;line-height:1.6}
+
+  /* Charts */
+  .cg2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+  @media(max-width:640px){.cg2{grid-column:1fr}}
+
+  /* Progress bar */
+  .pb{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:4px}
+  .pf{height:100%;background:var(--amber);border-radius:3px}
+
+  /* Insights */
+  .ins{border-left:3px solid var(--amber);padding:.75rem 1rem;background:var(--amber-light);border-radius:0 var(--radius) var(--radius) 0;margin-bottom:.75rem}
+  .int{font-size:13px;font-weight:600;margin-bottom:3px}
+  .inb{font-size:12px;color:var(--text2);line-height:1.6}
+
+  /* Avatar */
+  .av{width:30px;height:30px;border-radius:50%;background:var(--amber-light);color:var(--amber-dark);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+
+  /* Settings */
+  .set-row{display:flex;justify-content:space-between;align-items:center;padding:.75rem 0;border-bottom:1px solid var(--border)}
+  .set-row:last-child{border-bottom:none}
+  .set-lbl{font-size:13px;font-weight:500}
+  .set-sub{font-size:11px;color:var(--text2);margin-top:2px}
+  .slog{font-size:11px;color:var(--text2);font-family:'Courier New',monospace;background:var(--bg2);border-radius:var(--radius);padding:.75rem;max-height:160px;overflow-y:auto;margin-top:.75rem;border:1px solid var(--border)}
+  .slog-line{padding:1px 0;border-bottom:1px solid var(--border)}
+  .slog-line:last-child{border-bottom:none}
+  .sl-ok{color:#166534}.sl-err{color:#991B1B}.sl-info{color:#1E40AF}
+
+  /* Buttons bar */
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:.875rem}
+
+  /* Toast */
+  #toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1a1a1a;color:white;padding:.75rem 1.25rem;border-radius:var(--radius-lg);font-size:13px;font-weight:500;display:none;z-index:999;max-width:320px;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+
+  /* Print */
+  @media print{
+    header,nav,#app>main .sec>*:not(#rcpt-print-area),#toast{display:none!important}
+    #rcpt-print-area{display:block!important}
+    body{background:white}
+  }
+  #rcpt-print-area{display:none}
+
+  /* Responsive */
+  @media(max-width:480px){
+    main{padding:.875rem .75rem}
+    header{padding:.625rem .875rem}
+    .mv{font-size:18px}
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="ld">
+  <div class="ld-logo">D</div>
+  <div class="ld-title">DEEPACK Business Center</div>
+  <div class="ld-sub" id="ldmsg">Inaunganisha na Apps Script...</div>
+  <div class="ld-bar"><div class="ld-fill"></div></div>
+</div>
+
+<!-- App -->
+<div id="app">
+<header>
+  <div class="h-left">
+    <div class="h-logo" id="hdr-logo">D</div>
+    <div>
+      <div class="h-name" id="hdr-name">DEEPACK Business Center</div>
+      <div class="h-status"><span class="dot dot-a" id="cdot"></span><span id="ctxt">Inaunganisha...</span></div>
+    </div>
+  </div>
+  <div class="h-right">
+    <span class="sync-txt" id="sst"></span>
+    <button class="btn bto bts" onclick="doSync(true)">↑ Sync</button>
+    <button class="btn btg bts" onclick="doLoad()">↓ Pakia</button>
+  </div>
+</header>
+
+<nav>
+  <button class="nav-btn active" onclick="ST('dash')">Dashboard</button>
+  <button class="nav-btn" onclick="ST('stk')">Bidhaa <span id="lbadge" class="nbadge">0</span></button>
+  <button class="nav-btn" onclick="ST('pos')">Uza (POS)</button>
+  <button class="nav-btn" onclick="ST('wat')">Wateja</button>
+  <button class="nav-btn" onclick="ST('rep')">Ripoti</button>
+  <button class="nav-btn" onclick="ST('set')">⚙ Mipangilio</button>
+</nav>
+
+<main>
+
+<!-- DASHBOARD -->
+<div id="dash" class="sec active">
+  <div id="wpop">
+    <button class="wpop-close" onclick="document.getElementById('wpop').style.display='none'">✕</button>
+    <div id="wpc"></div>
+  </div>
+  <div id="dalr" style="display:none" class="alr"></div>
+  <div id="dsucc" style="display:none" class="succ"></div>
+  <div class="mg" id="dm"></div>
+  <div class="cg2">
+    <div class="card"><div class="card-title">Mauzo kwa Siku (Wiki Hii)</div><div style="position:relative;height:200px"><canvas id="c1"></canvas></div></div>
+    <div class="card"><div class="card-title">Mapato kwa Kategori</div><div style="position:relative;height:200px"><canvas id="c2"></canvas></div></div>
+  </div>
+  <div class="card"><div class="card-title">Mauzo ya Hivi Karibuni</div><div class="tbl-wrap"><table id="rst"></table></div></div>
+</div>
+
+<!-- BIDHAA -->
+<div id="stk" class="sec">
+  <div class="sh">
+    <div class="sh-title">Bidhaa (<span id="pc">0</span>)</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn bts bto" onclick="tog('apf')">+ Bidhaa Moja</button>
+      <button class="btn bts bto" onclick="tog('upcard')">📂 Pakia Excel</button>
+      <button class="btn bts bto" onclick="dlTpl()">⬇ Template</button>
+    </div>
+  </div>
+  <div id="apf" class="card collapse">
+    <div class="card-title">Ongeza Bidhaa Mpya</div>
+    <div class="fr"><div class="fg"><label>Jina la Bidhaa *</label><input id="pn" placeholder="Mfano: White Target Cream"></div><div class="fg"><label>Kategori *</label><select id="pcat"><option>Vipodozi</option><option>Electronics</option><option>Mavazi</option><option>Viatu</option><option>Stationery</option><option>Vingine</option></select></div></div>
+    <div class="fr"><div class="fg"><label>Maelezo / Specification</label><textarea id="pspec" placeholder="Mfano: Cream ya kunga ngozi 200ml, Made in Egypt"></textarea></div><div class="fg"><label>Kitengo</label><select id="punit"><option>Kipande</option><option>Set</option><option>Chupa</option><option>Pakiti</option><option>Dazeni</option><option>Kilo</option><option>Ream</option><option>Sanduku</option></select></div></div>
+    <div class="fr"><div class="fg"><label>Bei ya Kununulia (TZS) *</label><input type="number" id="pbuy" placeholder="0"></div><div class="fg"><label>Bei ya Kuuzia (TZS) *</label><input type="number" id="psell" placeholder="0"></div></div>
+    <div class="fr"><div class="fg"><label>Stock ya Sasa</label><input type="number" id="pstock" value="0"></div><div class="fg"><label>Kiwango cha Chini cha Onyo</label><input type="number" id="pmin" value="5"></div></div>
+    <div class="btn-row"><button class="btn bta" onclick="addProd()">Hifadhi Bidhaa</button><button class="btn bto" onclick="tog('apf')">Funga</button><span id="pmsg" style="font-size:12px;color:#166534;align-self:center"></span></div>
+  </div>
+  <div id="upcard" class="card collapse">
+    <div class="card-title">Pakia Bidhaa kwa Wingi (Excel / CSV)</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:.75rem">Columns zinazohitajika: <strong>Jina, Kategori, Maelezo, Kitengo, Bei_Kununua, Bei_Kuuzia, Stock, Min_Stock</strong></p>
+    <div class="upz" ondragover="event.preventDefault();this.style.borderColor='var(--amber)'" ondragleave="this.style.borderColor=''" ondrop="hDrop(event)">
+      <input type="file" id="xlf" accept=".xlsx,.xls,.csv" onchange="hXl(this.files[0])">
+      <label for="xlf">
+        <div style="font-size:32px;margin-bottom:.5rem">📂</div>
+        <div style="font-size:14px;font-weight:600">Buruta faili hapa au bonyeza</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:5px">Inakubali: .xlsx, .xls, .csv</div>
+      </label>
+    </div>
+    <div id="xlprev"></div>
+  </div>
+  <div class="src">
+    <input type="text" id="ps" placeholder="🔍 Tafuta bidhaa..." oninput="renderStk()">
+    <select id="pcf" onchange="renderStk()"><option value="">Kategori zote</option><option>Vipodozi</option><option>Electronics</option><option>Mavazi</option><option>Viatu</option><option>Stationery</option><option>Vingine</option></select>
+    <select id="psf" onchange="renderStk()"><option value="">Stock zote</option><option value="out">Imekwisha</option><option value="low">Stock Chini</option><option value="ok">Ipo OK</option></select>
+  </div>
+  <div class="tbl-wrap"><table id="ptbl"></table></div>
+</div>
+
+<!-- POS -->
+<div id="pos" class="sec">
+  <div class="pos-wrap">
+    <div>
+      <div class="ctabs" id="poscats"></div>
+      <div class="pgrid" id="posproducts"></div>
+    </div>
+    <div>
+      <div class="cartbox">
+        <div class="cart-title">🛒 Kikapu <span id="cart-count" style="background:var(--amber);color:white;padding:2px 7px;border-radius:10px;font-size:11px">0</span></div>
+        <div id="citems" style="font-size:13px;color:var(--text2);text-align:center;padding:1rem 0">Bonyeza bidhaa kuongeza kwenye kikapu</div>
+        <div id="ctots" style="display:none">
+          <div style="height:1px;background:var(--border);margin:.5rem 0"></div>
+          <div class="tr"><span style="color:var(--text2)">Mapato</span><span id="tot" style="font-weight:700">TZS 0</span></div>
+          <div class="tr"><span style="color:var(--text2)">Gharama</span><span id="cst" style="color:#991B1B">TZS 0</span></div>
+          <div class="prf"><span>💰 Faida</span><span id="prf">TZS 0</span></div>
+          <div style="height:1px;background:var(--border);margin:.625rem 0"></div>
+          <div class="fg" style="margin-bottom:.625rem"><label>Mteja (optional)</label><select id="scust" style="padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);font-size:12px"></select></div>
+          <div class="fg" style="margin-bottom:.625rem"><label>Aina ya Malipo</label><select id="spay" onchange="upPay()" style="padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);font-size:12px"><option>Taslimu</option><option>Mkopo</option><option>Deni</option></select></div>
+          <div id="payrow" class="fg" style="margin-bottom:.625rem;display:none"><label>Kilicholipwa (TZS)</label><input type="number" id="spaid" placeholder="0" style="padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px"></div>
+          <div class="fg" style="margin-bottom:.875rem"><label>Maelezo</label><input type="text" id="snote" placeholder="Maelezo ya ziada..." style="padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px"></div>
+          <button class="btn bta" style="width:100%;padding:11px" onclick="completeSale()">✓ Kamilisha Mauzo</button>
+          <button class="btn bto bts" style="width:100%;margin-top:6px" onclick="clearCart()">Futa Kikapu</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="rcpt" id="rcpt">
+    <div class="rcpt-hdr">
+      <div style="font-size:14px;font-weight:700">🧾 Risiti ya Mauzo</div>
+      <div style="display:flex;gap:8px"><button class="btn bta bts" onclick="doPrint()">🖨 Chapisha</button><button class="btn bto bts" onclick="newSale()">+ Mauzo Mapya</button></div>
+    </div>
+    <div class="rcpt-body" id="rbd"></div>
+  </div>
+</div>
+
+<!-- WATEJA -->
+<div id="wat" class="sec">
+  <div class="sh">
+    <div class="sh-title">Wateja (<span id="cc">0</span>)</div>
+    <button class="btn bta bts" onclick="tog('cform')">+ Mteja Mpya</button>
+  </div>
+  <div id="cform" class="card collapse">
+    <div class="card-title">Ongeza Mteja Mpya</div>
+    <div class="fr"><div class="fg"><label>Jina Kamili *</label><input id="cj" placeholder="Jina la mteja"></div><div class="fg"><label>Namba ya Simu</label><input id="cs" placeholder="0700 000 000"></div></div>
+    <div class="fr"><div class="fg"><label>Eneo / Mtaa</label><input id="ce" placeholder="Mji au mtaa"></div><div class="fg"><label>Status</label><select id="cst2"><option>Mpya</option><option>Kawaida</option><option>VIP</option></select></div></div>
+    <div class="fr"><div class="fg"><label>Mwezi wa Kuzaliwa</label><select id="cm"><option value="">-- Chagua --</option><option>Januari</option><option>Februari</option><option>Machi</option><option>Aprili</option><option>Mei</option><option>Juni</option><option>Julai</option><option>Agosti</option><option>Septemba</option><option>Oktoba</option><option>Novemba</option><option>Desemba</option></select></div><div class="fg"><label>Chanzo (alikujaje?)</label><select id="cch"><option>Walk-in</option><option>WhatsApp</option><option>Referral</option><option>Social Media</option><option>Simu</option></select></div></div>
+    <div class="fg" style="margin-bottom:.875rem"><label>Maoni / Kidokezo</label><textarea id="cmo" placeholder="Tabia ya mteja, anapenda nini, wakati anakuja..."></textarea></div>
+    <div class="btn-row"><button class="btn bta" onclick="saveCust()">Hifadhi Mteja</button><button class="btn bto" onclick="tog('cform')">Funga</button><span id="cmsg" style="font-size:12px;color:#166534;align-self:center"></span></div>
+  </div>
+  <div class="src">
+    <input type="text" id="csr" placeholder="🔍 Tafuta mteja..." oninput="renderWat()">
+    <select id="csf" onchange="renderWat()"><option value="">Status zote</option><option>VIP</option><option>Kawaida</option><option>Mpya</option></select>
+  </div>
+  <div class="tbl-wrap"><table id="ctbl"></table></div>
+</div>
+
+<!-- RIPOTI -->
+<div id="rep" class="sec">
+  <div class="sh"><div class="sh-title">Ripoti & Mwelekeo wa Biashara</div></div>
+  <div class="mg" id="rm"></div>
+  <div class="cg2">
+    <div class="card"><div class="card-title">Faida kwa Kategori</div><div style="position:relative;height:210px"><canvas id="c3"></canvas></div></div>
+    <div class="card"><div class="card-title">Mauzo kwa Mwezi</div><div style="position:relative;height:210px"><canvas id="c4"></canvas></div></div>
+  </div>
+  <div class="card"><div class="card-title">Bidhaa Zinazouza Zaidi</div><div id="tprd"></div></div>
+  <div class="card" style="margin-top:1rem"><div class="card-title">Mapendekezo ya Mfumo</div><div id="recs"></div></div>
+</div>
+
+<!-- MIPANGILIO -->
+<div id="set" class="sec">
+  <div class="sh"><div class="sh-title">Mipangilio ya Mfumo</div></div>
+  <div class="card">
+    <div class="card-title">Taarifa za Duka — Zinaonekana kwenye Risiti</div>
+    <div class="fr"><div class="fg"><label>Jina la Duka</label><input id="set-name" placeholder="DEEPACK Business Center"></div><div class="fg"><label>Namba ya Simu</label><input id="set-phone" placeholder="+255 XXX XXX XXX"></div></div>
+    <div class="fr"><div class="fg"><label>Anuani</label><input id="set-addr" placeholder="Kigoma, Tanzania"></div><div class="fg"><label>Sarafu</label><select id="set-curr"><option value="TZS">TZS — Shilingi ya Tanzania</option><option value="USD">USD — Dola ya Marekani</option><option value="KES">KES — Shilingi ya Kenya</option></select></div></div>
+    <div class="fg" style="margin-bottom:.875rem"><label>Ujumbe wa Chini ya Risiti</label><input id="set-footer" placeholder="Asante kwa kununua! Karibu tena."></div>
+    <div class="btn-row"><button class="btn bta" onclick="saveSettings()">💾 Hifadhi Mipangilio</button><span id="setmsg" style="font-size:12px;color:#166534;align-self:center"></span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Muunganiko wa Apps Script</div>
+    <div class="fg" style="margin-bottom:.75rem"><label>URL ya Apps Script</label><input id="set-url" placeholder="https://script.google.com/macros/s/.../exec" style="font-size:12px"></div>
+    <div class="btn-row" style="margin-bottom:.875rem">
+      <button class="btn bta bts" onclick="testConn()">🔌 Jaribu Muunganiko</button>
+      <button class="btn bto bts" onclick="saveUrl()">💾 Hifadhi URL</button>
+    </div>
+    <div id="conn-result" style="font-size:12px;color:var(--text2);margin-bottom:.5rem"></div>
+    <div class="card-title" style="margin-top:.875rem">Logi ya Sync</div>
+    <div class="slog" id="synclog"><div class="slog-line sl-info">Mfumo umeanzishwa...</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Usimamizi wa Data</div>
+    <div class="set-row"><div><div class="set-lbl">Pakia data kutoka Apps Script</div><div class="set-sub">Sasisha na data ya hivi karibuni kutoka Google Sheets</div></div><button class="btn btg bts" onclick="doLoad()">↓ Pakia Cloud</button></div>
+    <div class="set-row"><div><div class="set-lbl">Tuma data kwenda Apps Script</div><div class="set-sub">Hifadhi data yote kwenye Google Sheets yako</div></div><button class="btn bta bts" onclick="doSync(true)">↑ Sync Sasa</button></div>
+    <div class="set-row"><div><div class="set-lbl">Futa data zote za ndani</div><div class="set-sub" style="color:#991B1B">Hatua hii haiwezi kurudishwa!</div></div><button class="btn btd bts" onclick="clearAll()">🗑 Futa</button></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Kuhusu Mfumo</div>
+    <div style="font-size:13px;color:var(--text2);line-height:2">
+      <div><strong>DEEPACK Business System v3.0</strong></div>
+      <div>Mmiliki: DEEPACK Business Center, Kigoma Tanzania</div>
+      <div>Imeundwa: Claude AI (Anthropic) — 2025</div>
+      <div style="margin-top:.5rem;font-size:12px;background:var(--bg2);padding:.75rem;border-radius:var(--radius)">Mfumo huu umejengwa mahsusi kwa DEEPACK. Hapo baadaye unaweza kukua kuwa SaaS ya kuuza kwa wafanyabiashara wengine Tanzania.</div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+<!-- Print target -->
+<div id="rcpt-print-area"></div>
+
+<script>
+const CATS=['Vipodozi','Electronics','Mavazi','Viatu','Stationery','Vingine'];
+const DEF_URL='https://script.google.com/macros/s/AKfycbw06rBvU4kCDV3JxyOJOkpzab9TIq6bAk15kJvLRyBhDoRAriQ2BM3_4OJrBNKPYBFRkQ/exec';
+let P=[],S=[],C=[],cart=[],ap='Vipodozi',npid=1,nsid=1,ncid=1;
+let cfg={duka:'DEEPACK Business Center',simu:'+255 XXX XXX XXX',anuani:'Kigoma, Tanzania',sarafu:'TZS',footer:'Asante kwa kununua! Karibu tena.',url:DEF_URL};
+let ch1,ch2,ch3,ch4,logs=[];
+
+const fm=n=>Number(n||0).toLocaleString('sw-TZ');
+const revS=s=>s.items?s.items.reduce((a,i)=>a+i.sell*i.qty,0):(s.total||0);
+const prfS=s=>s.items?s.items.reduce((a,i)=>a+(i.sell-i.buy)*i.qty,0):(s.profit||0);
+const gls=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch{return null}};
+const sls=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+
+function toast(msg,dur=3000){const el=document.getElementById('toast');el.textContent=msg;el.style.display='block';setTimeout(()=>el.style.display='none',dur)}
+function addLog(msg,type='info'){const t=new Date().toLocaleTimeString('sw-TZ',{hour:'2-digit',minute:'2-digit',second:'2-digit'});logs.unshift({t,msg,type});if(logs.length>50)logs.pop();const el=document.getElementById('synclog');if(el)el.innerHTML=logs.map(l=>`<div class="slog-line sl-${l.type}">[${l.t}] ${l.msg}</div>`).join('')}
+function setConn(s){const dot=document.getElementById('cdot'),txt=document.getElementById('ctxt');const c={online:'dot-g',offline:'dot-r',checking:'dot-a'};const t={online:'Imeunganishwa — Online',offline:'Nje ya Mtandao — Data ya Ndani',checking:'Inaunganisha...'};if(dot){dot.className='dot '+(c[s]||'dot-a')}if(txt)txt.textContent=t[s]||'...'}
+
+function defP(){return[
+  {id:1,jina:'White Target',cat:'Vipodozi',spec:'Cream ya kunga ngozi 200ml',unit:'Kipande',buy:18000,sell:25000,stock:10,min:3},
+  {id:2,jina:'Egyptian Glow Shower Gel',cat:'Vipodozi',spec:'Shower gel ya glow',unit:'Chupa',buy:22000,sell:30000,stock:5,min:2},
+  {id:3,jina:'Advanced Snail 92 OG',cat:'Vipodozi',spec:'Moisturizer ya konokono 80ml',unit:'Kipande',buy:35000,sell:45000,stock:3,min:2},
+  {id:4,jina:'Vaseline',cat:'Vipodozi',spec:'Petroleum jelly 250ml',unit:'Kipande',buy:12000,sell:18000,stock:15,min:5},
+  {id:5,jina:'Simple Moisturizer',cat:'Vipodozi',spec:'Moisturizer kwa ngozi sensitive',unit:'Kipande',buy:20000,sell:28000,stock:8,min:3},
+  {id:6,jina:'Licorice Oil',cat:'Vipodozi',spec:'Oil ya licorice kunga ngozi',unit:'Chupa',buy:15000,sell:22000,stock:6,min:2},
+  {id:7,jina:'Omnigold',cat:'Vipodozi',spec:'Cream ya dhahabu 200ml',unit:'Kipande',buy:25000,sell:35000,stock:4,min:2},
+  {id:8,jina:'Naranja',cat:'Vipodozi',spec:'Cream ya machungwa 150ml',unit:'Chupa',buy:16000,sell:23000,stock:2,min:3},
+  {id:9,jina:'A4 Paper (Ream)',cat:'Stationery',spec:'A4 80gsm 500 sheets',unit:'Ream',buy:12000,sell:18000,stock:20,min:5},
+  {id:10,jina:'Ballpoint Pens (Box)',cat:'Stationery',spec:'Pens sanduku la 50',unit:'Sanduku',buy:8000,sell:12000,stock:15,min:5},
+]}
+function defC(){return[
+  {id:1,jina:'RENETHA',simu:'0747087615',eneo:'Burega',status:'Kawaida',chanzo:'Walk-in',mwezi:'',maoni:'Anapenda bidhaa za kunga'},
+  {id:2,jina:'OLIVA MWIZARUBI',simu:'0771612290',eneo:'Maweni',status:'VIP',chanzo:'Walk-in',mwezi:'Agosti',maoni:'Anapenda kuglow'},
+  {id:3,jina:'ODETHA K',simu:'0768782574',eneo:'Karagwe',status:'Kawaida',chanzo:'Referral',mwezi:'',maoni:''},
+  {id:4,jina:'Rafiki wa Linah',simu:'',eneo:'Maweni',status:'Mpya',chanzo:'Referral',mwezi:'',maoni:''},
+  {id:5,jina:'JULIANA BUGANA',simu:'',eneo:'Kigoma Mjini',status:'Mpya',chanzo:'Walk-in',mwezi:'',maoni:''},
+]}
+function defS(){
+  const td=new Date(),ds=[];
+  [6,5,4,3,2,1,0].forEach((d,i)=>{
+    const dt=new Date(td);dt.setDate(dt.getDate()-d);
+    const date=dt.toISOString().split('T')[0];
+    ds.push({id:i+1,date,time:'10:30',items:[{pid:1,jina:'White Target',buy:18000,sell:25000,qty:2},{pid:4,jina:'Vaseline',buy:12000,sell:18000,qty:1}],custId:1,custJina:'RENETHA',malipo:'Taslimu',paid:68000,note:''});
+    if(d<5)ds.push({id:i+10,date,time:'14:00',items:[{pid:2,jina:'Egyptian Glow Shower Gel',buy:22000,sell:30000,qty:1},{pid:5,jina:'Simple Moisturizer',buy:20000,sell:28000,qty:1}],custId:2,custJina:'OLIVA MWIZARUBI',malipo:'Taslimu',paid:58000,note:''});
+  });
+  return ds;
+}
+
+async function doLoad(){
+  setConn('checking');document.getElementById('sst').textContent='Inapakia...';addLog('Inaanzisha kupakia data kutoka cloud...','info');
+  try{
+    const url=cfg.url+'?action=getData&t='+Date.now();
+    const res=await Promise.race([fetch(url),new Promise((_,r)=>setTimeout(()=>r(new Error('Timeout')),8000))]);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    if(data.status==='ok'){
+      if(data.products&&data.products.length>0){P=data.products;npid=Math.max(...P.map(x=>x.id))+1}
+      if(data.sales&&data.sales.length>0){S=data.sales;nsid=Math.max(...S.map(x=>x.id||0))+1}
+      if(data.customers&&data.customers.length>0){C=data.customers;ncid=Math.max(...C.map(x=>x.id))+1}
+      sls('dkp',P);sls('dks',S);sls('dkc',C);
+      setConn('online');addLog(`Imepakia: Bidhaa ${P.length}, Mauzo ${S.length}, Wateja ${C.length}`,'ok');
+      document.getElementById('sst').textContent='Imepakia '+new Date().toLocaleTimeString('sw-TZ',{hour:'2-digit',minute:'2-digit'});
+      toast(`✓ Data imepakiwa — Bidhaa ${P.length}, Mauzo ${S.length}, Wateja ${C.length}`);
+      updAlerts();if(document.getElementById('dash').classList.contains('active'))renderDash();
+    }else throw new Error(data.message||'Jibu si sahihi');
+  }catch(err){
+    setConn('offline');addLog('Imeshindwa kupakia: '+err.message,'err');
+    document.getElementById('sst').textContent='';toast('⚠ Haikuweza kupakia: '+err.message,4000);
+  }
+}
+
+async function doSync(manual){
+  document.getElementById('sst').textContent='Inasync...';addLog('Inatuma data kwenda Apps Script...','info');
+  try{
+    await fetch(cfg.url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'syncDeepack',products:P,sales:S,customers:C,ts:new Date().toISOString()})});
+    sls('dkp',P);sls('dks',S);sls('dkc',C);
+    const t=new Date().toLocaleTimeString('sw-TZ',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('sst').textContent='Sync: '+t;setConn('online');
+    addLog(`Sync: Bidhaa ${P.length}, Mauzo ${S.length}, Wateja ${C.length}`,'ok');
+    if(manual)toast('✓ Data imetumwa kwenda Google Sheets!');
+    setTimeout(()=>{if(!manual)document.getElementById('sst').textContent=''},5000);
+  }catch(err){addLog('Sync imeshindwa: '+err.message,'err');document.getElementById('sst').textContent='';setConn('offline')}
+}
+
+async function testConn(){
+  const url=document.getElementById('set-url').value.trim()||cfg.url;
+  const el=document.getElementById('conn-result');el.textContent='Inajaribu muunganiko...';el.style.color='var(--text2)';
+  addLog('Inajaribu: '+url.substring(0,60)+'...','info');
+  try{
+    const res=await Promise.race([fetch(url+'?action=info&t='+Date.now()),new Promise((_,r)=>setTimeout(()=>r(new Error('Timeout baada ya sekunde 8')),8000))]);
+    const data=await res.json();
+    if(data.status==='ok'){
+      el.textContent='✓ '+data.system+' | Sync ya Mwisho: '+(data.lastSync||'Bado');
+      el.style.color='#166534';setConn('online');addLog('Muunganiko umefanikiwa: '+data.system,'ok');
+      toast('✓ Muunganiko umefanikiwa!');
+    }else throw new Error(data.message);
+  }catch(err){
+    el.textContent='✕ Imeshindwa: '+err.message;el.style.color='#991B1B';
+    setConn('offline');addLog('Muunganiko umeshindwa: '+err.message,'err');
+    toast('⚠ Muunganiko umeshindwa: '+err.message,4000);
+  }
+}
+
+function saveSettings(){
+  cfg.duka=document.getElementById('set-name').value.trim()||cfg.duka;
+  cfg.simu=document.getElementById('set-phone').value.trim()||cfg.simu;
+  cfg.anuani=document.getElementById('set-addr').value.trim()||cfg.anuani;
+  cfg.sarafu=document.getElementById('set-curr').value;
+  cfg.footer=document.getElementById('set-footer').value.trim()||cfg.footer;
+  sls('dkcfg',cfg);
+  document.getElementById('hdr-name').textContent=cfg.duka;
+  document.getElementById('hdr-logo').textContent=cfg.duka.charAt(0);
+  document.querySelector('.ld-logo').textContent=cfg.duka.charAt(0);
+  document.getElementById('setmsg').textContent='✓ Imehifadhiwa!';
+  setTimeout(()=>document.getElementById('setmsg').textContent='',3000);
+  addLog('Mipangilio imehifadhiwa: '+cfg.duka,'ok');toast('✓ Mipangilio imehifadhiwa!');
+}
+
+function saveUrl(){
+  const url=document.getElementById('set-url').value.trim();
+  if(!url){alert('Ingiza URL');return}
+  cfg.url=url;sls('dkcfg',cfg);addLog('URL mpya imehifadhiwa','ok');toast('✓ URL imehifadhiwa');
+}
+
+function init(){
+  setConn('checking');
+  const sc=gls('dkcfg');if(sc){cfg={...cfg,...sc}}
+  document.getElementById('set-name').value=cfg.duka;document.getElementById('set-phone').value=cfg.simu;
+  document.getElementById('set-addr').value=cfg.anuani;document.getElementById('set-footer').value=cfg.footer;
+  document.getElementById('set-url').value=cfg.url;document.getElementById('set-curr').value=cfg.sarafu;
+  document.getElementById('hdr-name').textContent=cfg.duka;document.getElementById('hdr-logo').textContent=cfg.duka.charAt(0);
+  const lp=gls('dkp'),ls=gls('dks'),lc=gls('dkc');
+  P=lp||defP();S=ls||defS();C=lc||defC();
+  npid=Math.max(0,...P.map(x=>x.id))+1;nsid=Math.max(0,...S.map(x=>x.id||0))+1;ncid=Math.max(0,...C.map(x=>x.id))+1;
+  if(lp)addLog(`Cache ya ndani: Bidhaa ${P.length}, Mauzo ${S.length}, Wateja ${C.length}`,'info');
+  document.getElementById('ldmsg').textContent='Inaanzisha mfumo...';
+  setTimeout(()=>{
+    document.getElementById('ld').style.display='none';
+    document.getElementById('app').style.display='block';
+    updAlerts();ST('dash');checkWkly();
+    doLoad();
+  },600);
+}
+
+function tog(id){const e=document.getElementById(id);e.style.display=e.style.display==='none'||e.classList.contains('collapse')?'block':'none';e.classList.remove('collapse')}
+function updAlerts(){
+  const low=P.filter(p=>p.stock>0&&p.stock<=p.min),out=P.filter(p=>p.stock===0),n=low.length+out.length;
+  const b=document.getElementById('lbadge');b.style.display=n>0?'inline':'none';b.textContent=n;
+  const a=document.getElementById('dalr');
+  if(out.length){a.style.display='block';a.innerHTML=`<strong>⚠ Bidhaa Zimekwisha:</strong> ${out.map(p=>p.jina).join(', ')}. ${low.length?`<br><strong>Stock Chini:</strong> ${low.map(p=>`${p.jina} (${p.stock} zimebaki)`).join(', ')}.`:''}`}
+  else if(low.length){a.style.display='block';a.innerHTML=`<strong>⚠ Stock Chini:</strong> ${low.map(p=>`${p.jina} (${p.stock}/${p.min})`).join(', ')}`}
+  else a.style.display='none';
+}
+
+function ST(t){
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(t)?.classList.add('active');
+  const ti={dash:0,stk:1,pos:2,wat:3,rep:4,set:5};
+  document.querySelectorAll('.nav-btn')[ti[t]]?.classList.add('active');
+  if(t==='dash')renderDash();if(t==='stk')renderStk();if(t==='pos')renderPos();if(t==='wat')renderWat();if(t==='rep')renderRep();
+}
+
+function renderDash(){
+  const wa=new Date();wa.setDate(wa.getDate()-7);
+  const ws=S.filter(s=>new Date(s.date)>=wa),td=new Date().toISOString().split('T')[0];
+  const ts=S.filter(s=>s.date===td),low=P.filter(p=>p.stock<=p.min).length;
+  const wr=ws.reduce((a,s)=>a+revS(s),0),wp=ws.reduce((a,s)=>a+prfS(s),0);
+  document.getElementById('dm').innerHTML=`
+    <div class="met"><div class="ml">Bidhaa Zote</div><div class="mv">${P.length}</div><div class="ms">${low} zinahitaji stock</div></div>
+    <div class="met"><div class="ml">Mauzo Leo</div><div class="mv">${ts.length}</div><div class="ms">${cfg.sarafu} ${fm(ts.reduce((a,s)=>a+revS(s),0))}</div></div>
+    <div class="met"><div class="ml">Mapato Wiki</div><div class="mv" style="font-size:17px">${cfg.sarafu} ${fm(wr)}</div></div>
+    <div class="met"><div class="ml">Faida Wiki</div><div class="mv" style="font-size:17px;color:#166534">${cfg.sarafu} ${fm(wp)}</div></div>
+    <div class="met"><div class="ml">Wateja</div><div class="mv">${C.length}</div><div class="ms">${C.filter(c=>c.status==='VIP').length} VIP</div></div>
+  `;
+  const days=['Jum','Alh','Iju','Jmo','Jmt','Alh','Leo'],dd=[];
+  for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);dd.push(ws.filter(s=>s.date===d.toISOString().split('T')[0]).reduce((a,s)=>a+revS(s),0))}
+  if(ch1)ch1.destroy();
+  ch1=new Chart(document.getElementById('c1'),{type:'bar',data:{labels:days,datasets:[{data:dd,backgroundColor:'#BA7517',borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>v>=1000?(v/1000)+'k':v}}}}});
+  const catR={};CATS.forEach(c=>catR[c]=0);
+  ws.forEach(s=>s.items&&s.items.forEach(i=>{const p=P.find(x=>x.id===i.pid);if(p)catR[p.cat]=(catR[p.cat]||0)+i.sell*i.qty}));
+  const ac=Object.entries(catR).filter(([,v])=>v>0);
+  if(ch2)ch2.destroy();
+  if(ac.length)ch2=new Chart(document.getElementById('c2'),{type:'doughnut',data:{labels:ac.map(([k])=>k),datasets:[{data:ac.map(([,v])=>v),backgroundColor:['#BA7517','#1D9E75','#378ADD','#D4537E','#EF9F27','#888780']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:12}}}}});
+  const rc=S.slice(-8).reverse();
+  document.getElementById('rst').innerHTML=`<thead><tr><th>Tarehe</th><th>Mteja</th><th>Bidhaa</th><th>Mapato</th><th>Faida</th><th>Malipo</th></tr></thead><tbody>${rc.map(s=>`<tr><td>${s.date}</td><td>${s.custJina||'—'}</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.items?s.items.map(i=>i.jina).join(', '):s.bidhaa||'—'}</td><td>${cfg.sarafu} ${fm(revS(s))}</td><td style="color:#166534;font-weight:600">${cfg.sarafu} ${fm(prfS(s))}</td><td><span class="b ${s.malipo==='Taslimu'?'bg':s.malipo==='Mkopo'?'ba':'br'}">${s.malipo||'Taslimu'}</span></td></tr>`).join('')}</tbody>`;
+}
+
+function renderStk(){
+  const sr=(document.getElementById('ps')?.value||'').toLowerCase(),cf=document.getElementById('pcf')?.value||'',sf=document.getElementById('psf')?.value||'';
+  const fl=P.filter(p=>(p.jina.toLowerCase().includes(sr)||(p.spec||'').toLowerCase().includes(sr))&&(!cf||p.cat===cf)&&(!sf||(sf==='out'&&p.stock===0)||(sf==='low'&&p.stock>0&&p.stock<=p.min)||(sf==='ok'&&p.stock>p.min)));
+  document.getElementById('pc').textContent=P.length;
+  document.getElementById('ptbl').innerHTML=`<thead><tr><th>Bidhaa</th><th>Kategori</th><th>Bei Kununua</th><th>Bei Kuuzia</th><th>Margin</th><th>Stock</th><th>Vitendo</th></tr></thead><tbody>${fl.map(p=>{
+    const m=p.buy>0?Math.round((p.sell-p.buy)/p.buy*100):0;
+    const sb=p.stock===0?'<span class="b br">Imekwisha</span>':p.stock<=p.min?`<span class="b ba">${p.stock} ${p.unit||''}</span>`:`<span class="b bg">${p.stock} ${p.unit||''}</span>`;
+    return `<tr><td><div style="font-weight:600">${p.jina}</div><div style="font-size:11px;color:var(--text2)">${p.spec||''}</div></td><td><span class="b bgr">${p.cat}</span></td><td>${cfg.sarafu} ${fm(p.buy)}</td><td>${cfg.sarafu} ${fm(p.sell)}</td><td><span style="color:${m>=20?'#166534':m>=10?'#92400E':'#991B1B'};font-weight:700">${m}%</span></td><td>${sb}</td><td style="white-space:nowrap"><button class="bts" onclick="restock(${p.id})">+Stock</button> <button class="bts" onclick="editP(${p.id})">Edit</button> <button class="bts" style="color:#991B1B" onclick="delP(${p.id})">Futa</button></td></tr>`;
+  }).join('')}</tbody>`;
+}
+
+function addProd(){
+  const jina=document.getElementById('pn').value.trim();if(!jina){alert('Ingiza jina la bidhaa');return}
+  const buy=parseFloat(document.getElementById('pbuy').value)||0,sell=parseFloat(document.getElementById('psell').value)||0;
+  if(buy>0&&sell<buy&&!confirm('Bei ya kuuzia iko chini ya bei ya kununulia. Endelea?'))return;
+  P.push({id:npid++,jina,cat:document.getElementById('pcat').value,spec:document.getElementById('pspec').value.trim(),unit:document.getElementById('punit').value,buy,sell,stock:parseInt(document.getElementById('pstock').value)||0,min:parseInt(document.getElementById('pmin').value)||5});
+  sls('dkp',P);renderStk();updAlerts();toast('✓ Bidhaa imehifadhiwa!');
+  document.getElementById('pmsg').textContent='✓ Imehifadhiwa!';setTimeout(()=>document.getElementById('pmsg').textContent='',3000);
+  ['pn','pspec','pbuy','psell'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pstock').value='0';document.getElementById('pmin').value='5';doSync(false);
+}
+function restock(id){const p=P.find(x=>x.id===id);if(!p)return;const q=prompt(`Ongeza stock ngapi kwa "${p.jina}"?\nSasa hivi: ${p.stock} ${p.unit||''}`);if(!q)return;const n=parseInt(q);if(isNaN(n)||n<=0)return;p.stock+=n;sls('dkp',P);renderStk();updAlerts();doSync(false);toast(`✓ Stock ya ${p.jina} imeongezwa`)}
+function editP(id){const p=P.find(x=>x.id===id);if(!p)return;document.getElementById('apf').style.display='block';document.getElementById('apf').classList.remove('collapse');document.getElementById('pn').value=p.jina;document.getElementById('pcat').value=p.cat;document.getElementById('pspec').value=p.spec||'';document.getElementById('punit').value=p.unit||'Kipande';document.getElementById('pbuy').value=p.buy;document.getElementById('psell').value=p.sell;document.getElementById('pstock').value=p.stock;document.getElementById('pmin').value=p.min;P=P.filter(x=>x.id!==id);sls('dkp',P);document.getElementById('pmsg').textContent='Hariri na uhifadhi tena';document.getElementById('apf').scrollIntoView({behavior:'smooth'})}
+function delP(id){if(!confirm('Una uhakika wa kufuta bidhaa hii?'))return;const p=P.find(x=>x.id===id);P=P.filter(x=>x.id!==id);sls('dkp',P);renderStk();updAlerts();doSync(false);if(p)toast(`Bidhaa "${p.jina}" imefutwa`)}
+function hDrop(e){e.preventDefault();hXl(e.dataTransfer.files[0])}
+function hXl(f){if(!f)return;const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'binary'});const ws=wb.Sheets[wb.SheetNames[0]];prevXl(XLSX.utils.sheet_to_json(ws))}catch(err){alert('Kosa la faili: '+err.message)}};r.readAsBinaryString(f)}
+function prevXl(data){if(!data||!data.length){document.getElementById('xlprev').innerHTML='<p style="color:#991B1B;font-size:13px;margin-top:.5rem">Hakuna data katika faili hili</p>';return}document.getElementById('xlprev').innerHTML=`<div style="font-size:13px;margin:.75rem 0"><strong>Preview:</strong> Rekodi ${data.length} zimepatikana</div><div style="display:flex;gap:8px"><button class="btn bta" onclick='confXl(${JSON.stringify(data).replace(/'/g,"\\'")} )'>✓ Ingiza Bidhaa ${data.length}</button><button class="btn bto" onclick="document.getElementById('xlprev').innerHTML=''">Funga</button></div>`}
+function confXl(data){let n=0;data.forEach(r=>{const jina=(r.Jina||r.jina||r.Name||'').toString().trim();if(!jina)return;P.push({id:npid++,jina,cat:r.Kategori||r.Category||'Vingine',spec:r.Maelezo||r.Description||'',unit:r.Kitengo||r.Unit||'Kipande',buy:parseFloat(r.Bei_Kununua||r.BuyPrice||0),sell:parseFloat(r.Bei_Kuuzia||r.SellPrice||0),stock:parseInt(r.Stock||0),min:parseInt(r.Min_Stock||5)});n++});sls('dkp',P);renderStk();updAlerts();document.getElementById('xlprev').innerHTML=`<p style="color:#166534;font-size:13px;font-weight:600;margin-top:.5rem">✓ Bidhaa ${n} zimeingizwa!</p>`;document.getElementById('xlf').value='';doSync(false);toast(`✓ Bidhaa ${n} zimeingizwa!`)}
+function dlTpl(){const ws=XLSX.utils.json_to_sheet([{Jina:'White Target',Kategori:'Vipodozi',Maelezo:'Cream ya kunga 200ml',Kitengo:'Kipande',Bei_Kununua:18000,Bei_Kuuzia:25000,Stock:10,Min_Stock:3},{Jina:'A4 Paper',Kategori:'Stationery',Maelezo:'A4 80gsm 500 sheets',Kitengo:'Ream',Bei_Kununua:12000,Bei_Kuuzia:18000,Stock:20,Min_Stock:5}]);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Bidhaa');XLSX.writeFile(wb,'DEEPACK_Bidhaa_Template.xlsx')}
+
+function renderPos(){
+  const cnt={};CATS.forEach(c=>cnt[c]=P.filter(p=>p.cat===c).length);
+  document.getElementById('poscats').innerHTML=CATS.map(c=>`<button class="ctab ${c===ap?'active':''}" onclick="setcat('${c}')">${c} <span style="font-size:10px;opacity:.75">${cnt[c]}</span></button>`).join('');
+  renderPP();
+  const sc=document.getElementById('scust');if(sc)sc.innerHTML='<option value="">-- Hakuna Mteja --</option>'+C.map(c=>`<option value="${c.id}">${c.jina}${c.simu?' ('+c.simu+')':''}</option>`).join('');
+}
+function setcat(c){ap=c;renderPos()}
+function renderPP(){
+  const pp=P.filter(p=>p.cat===ap);const pg=document.getElementById('posproducts');
+  if(!pp.length){pg.innerHTML='<div style="font-size:13px;color:var(--text2);grid-column:1/-1;padding:1.5rem;text-align:center">Hakuna bidhaa kwenye kategori hii.<br><a href="#" onclick="ST(\'stk\')" style="color:var(--amber)">Ongeza bidhaa →</a></div>';return}
+  pg.innerHTML=pp.map(p=>`<div class="pc ${p.stock===0?'oos':''}" onclick="${p.stock>0?`addToCart(${p.id})`:''}" title="${p.spec||''}"><div class="pn">${p.jina}</div><div class="pp">${cfg.sarafu} ${fm(p.sell)}</div><div class="pst">${p.stock===0?'<span style="color:#991B1B;font-weight:600">Imekwisha</span>':p.stock<=p.min?`<span style="color:#92400E">${p.stock} zimebaki ⚠</span>`:`Stock: ${p.stock} ${p.unit||''}`}</div><div class="pmar">Faida: ${cfg.sarafu} ${fm(p.sell-p.buy)}</div></div>`).join('');
+}
+function addToCart(pid){const p=P.find(x=>x.id===pid);if(!p||p.stock===0)return;const ex=cart.find(i=>i.pid===pid);if(ex){if(ex.qty<p.stock)ex.qty++;else{toast(`⚠ Stock ${p.stock} tu zimebaki`);return}}else cart.push({pid,jina:p.jina,buy:p.buy,sell:p.sell,qty:1,unit:p.unit||''});renderCart()}
+function renderCart(){
+  const ci=document.getElementById('citems'),ct=document.getElementById('ctots');
+  document.getElementById('cart-count').textContent=cart.reduce((a,i)=>a+i.qty,0);
+  if(!cart.length){ci.style.display='block';ci.innerHTML='<div style="font-size:13px;color:var(--text2);text-align:center;padding:1rem 0">Bonyeza bidhaa kuongeza kwenye kikapu</div>';ct.style.display='none';return}
+  ci.style.display='block';ct.style.display='block';
+  ci.innerHTML=cart.map((it,i)=>`<div class="ci"><div class="cin">${it.jina}</div><input class="ciq" type="number" value="${it.qty}" min="1" onchange="upQty(${i},this.value)"><div class="cis">${cfg.sarafu} ${fm(it.sell*it.qty)}</div><button onclick="rmCart(${i})" style="background:none;border:none;cursor:pointer;color:#991B1B;font-size:16px;line-height:1;padding:0 3px">×</button></div>`).join('');
+  const total=cart.reduce((a,i)=>a+i.sell*i.qty,0),cost=cart.reduce((a,i)=>a+i.buy*i.qty,0),prft=total-cost;
+  document.getElementById('tot').textContent=cfg.sarafu+' '+fm(total);
+  document.getElementById('cst').textContent=cfg.sarafu+' '+fm(cost);
+  document.getElementById('prf').textContent=`${cfg.sarafu} ${fm(prft)} (${total>0?Math.round(prft/total*100):0}%)`;
+}
+function upQty(i,v){const n=parseInt(v);if(isNaN(n)||n<=0){cart.splice(i,1)}else{const p=P.find(x=>x.id===cart[i].pid);cart[i].qty=Math.min(n,p?p.stock:n)}renderCart()}
+function rmCart(i){cart.splice(i,1);renderCart()}
+function clearCart(){cart=[];renderCart();document.getElementById('rcpt').style.display='none'}
+function upPay(){document.getElementById('payrow').style.display=['Mkopo','Deni'].includes(document.getElementById('spay').value)?'flex':'none'}
+function completeSale(){
+  if(!cart.length){alert('Ongeza bidhaa kwanza');return}
+  const total=cart.reduce((a,i)=>a+i.sell*i.qty,0),malipo=document.getElementById('spay').value;
+  const paid=malipo==='Taslimu'?total:parseFloat(document.getElementById('spaid').value)||0;
+  const cid=parseInt(document.getElementById('scust').value)||null,cobj=C.find(c=>c.id===cid);
+  const sale={id:nsid++,date:new Date().toISOString().split('T')[0],time:new Date().toLocaleTimeString('sw-TZ',{hour:'2-digit',minute:'2-digit'}),items:cart.map(i=>({pid:i.pid,jina:i.jina,buy:i.buy,sell:i.sell,qty:i.qty})),custId:cid,custJina:cobj?.jina||'Mteja wa Kawaida',malipo,paid,total,profit:cart.reduce((a,i)=>a+(i.sell-i.buy)*i.qty,0),note:document.getElementById('snote').value};
+  cart.forEach(i=>{const p=P.find(x=>x.id===i.pid);if(p)p.stock=Math.max(0,p.stock-i.qty)});
+  S.push(sale);sls('dks',S);sls('dkp',P);updAlerts();renderPP();showRcpt(sale);cart=[];renderCart();
+  addLog(`Mauzo #${sale.id}: ${cfg.sarafu} ${fm(total)}, Faida ${cfg.sarafu} ${fm(sale.profit)}`,'ok');
+  toast(`✓ Mauzo imekamilika! Faida: ${cfg.sarafu} ${fm(sale.profit)}`);doSync(false);
+}
+function showRcpt(s){
+  const total=s.items.reduce((a,i)=>a+i.sell*i.qty,0),bak=total-s.paid;
+  const html=`<div class="rh"><div style="font-size:16px;font-weight:900;letter-spacing:2px">${cfg.duka.toUpperCase()}</div><div style="font-size:11px;margin-top:3px">${cfg.anuani}</div><div style="font-size:11px">${cfg.simu}</div></div><div class="rdiv"></div><div class="rrow"><span>Risiti Na.:</span><span style="font-weight:700">#${String(s.id).padStart(5,'0')}</span></div><div class="rrow"><span>Tarehe:</span><span>${s.date} ${s.time}</span></div><div class="rrow"><span>Mteja:</span><span>${s.custJina}</span></div><div class="rrow"><span>Malipo:</span><span>${s.malipo}</span></div><div class="rdiv"></div><table class="ritems"><thead><tr><th>Bidhaa</th><th style="text-align:center">Idadi</th><th style="text-align:right">Bei</th><th style="text-align:right">Jumla</th></tr></thead><tbody>${s.items.map(i=>`<tr><td>${i.jina}</td><td style="text-align:center">${i.qty}</td><td style="text-align:right">${fm(i.sell)}</td><td style="text-align:right">${fm(i.sell*i.qty)}</td></tr>`).join('')}</tbody></table><div class="rdiv"></div><div class="rrow" style="font-size:14px;font-weight:900"><span>JUMLA:</span><span>${cfg.sarafu} ${fm(total)}</span></div><div class="rrow"><span>Kilicholipwa:</span><span>${cfg.sarafu} ${fm(s.paid)}</span></div>${bak>0?`<div class="rrow" style="color:#991B1B;font-weight:700"><span>Bakaa (Deni):</span><span>${cfg.sarafu} ${fm(bak)}</span></div>`:`<div class="rrow" style="color:#166534;font-weight:700"><span>Chenji:</span><span>${cfg.sarafu} ${fm(Math.abs(bak))}</span></div>`}<div class="rdiv"></div><div class="rftr">${cfg.footer}</div>`;
+  document.getElementById('rbd').innerHTML=html;document.getElementById('rcpt-print-area').innerHTML=html;
+  document.getElementById('rcpt').style.display='block';document.getElementById('rcpt').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function doPrint(){window.print()}
+function newSale(){document.getElementById('rcpt').style.display='none';document.getElementById('snote').value='';document.getElementById('spaid').value=''}
+
+function renderWat(){
+  const sr=(document.getElementById('csr')?.value||'').toLowerCase(),fl=document.getElementById('csf')?.value||'';
+  const filtered=C.filter(c=>(c.jina.toLowerCase().includes(sr)||(c.simu||'').includes(sr)||(c.eneo||'').toLowerCase().includes(sr))&&(!fl||c.status===fl));
+  document.getElementById('cc').textContent=C.length;
+  const cs={};S.forEach(s=>{if(s.custId)cs[s.custId]=(cs[s.custId]||0)+revS(s)});
+  document.getElementById('ctbl').innerHTML=`<thead><tr><th>Mteja</th><th>Simu</th><th>Eneo</th><th>Status</th><th>Jumla Mauzo</th><th>Chanzo</th><th></th></tr></thead><tbody>${filtered.map(c=>`<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="av">${c.jina.charAt(0)}</div><div><div style="font-weight:600">${c.jina}</div>${c.maoni?`<div style="font-size:11px;color:var(--text2)">${c.maoni.substring(0,45)}</div>`:''}</div></div></td><td>${c.simu||'—'}</td><td>${c.eneo||'—'}</td><td><span class="b ${c.status==='VIP'?'ba':c.status==='Kawaida'?'bb':'bg'}">${c.status}</span></td><td style="font-weight:600">${cs[c.id]?cfg.sarafu+' '+fm(cs[c.id]):'—'}</td><td><span class="b bgr">${c.chanzo||'—'}</span></td><td><button class="bts" style="color:#991B1B" onclick="delC(${c.id})">Futa</button></td></tr>`).join('')}</tbody>`;
+}
+function saveCust(){
+  const jina=document.getElementById('cj').value.trim();if(!jina){alert('Ingiza jina!');return}
+  C.push({id:ncid++,jina:jina.toUpperCase(),simu:document.getElementById('cs').value.trim(),eneo:document.getElementById('ce').value.trim(),status:document.getElementById('cst2').value,chanzo:document.getElementById('cch').value,mwezi:document.getElementById('cm').value,maoni:document.getElementById('cmo').value.trim()});
+  sls('dkc',C);renderWat();toast('✓ Mteja amehifadhiwa!');
+  document.getElementById('cmsg').textContent='✓ Imehifadhiwa!';setTimeout(()=>document.getElementById('cmsg').textContent='',3000);
+  ['cj','cs','ce','cmo'].forEach(id=>document.getElementById(id).value='');doSync(false);
+}
+function delC(id){if(!confirm('Una uhakika wa kufuta mteja huyu?'))return;C=C.filter(c=>c.id!==id);sls('dkc',C);renderWat()}
+
+function renderRep(){
+  const tr=S.reduce((a,s)=>a+revS(s),0),tp=S.reduce((a,s)=>a+prfS(s),0);
+  document.getElementById('rm').innerHTML=`<div class="met"><div class="ml">Mauzo Yote</div><div class="mv">${S.length}</div></div><div class="met"><div class="ml">Mapato Yote</div><div class="mv" style="font-size:16px">${cfg.sarafu} ${fm(tr)}</div></div><div class="met"><div class="ml">Faida Yote</div><div class="mv" style="font-size:16px;color:#166534">${cfg.sarafu} ${fm(tp)}</div></div><div class="met"><div class="ml">Margin Wastani</div><div class="mv">${tr>0?Math.round(tp/tr*100):0}%</div></div>`;
+  const pr={},pp={};S.forEach(s=>s.items&&s.items.forEach(i=>{pr[i.jina]=(pr[i.jina]||0)+i.sell*i.qty;pp[i.jina]=(pp[i.jina]||0)+(i.sell-i.buy)*i.qty}));
+  const sr=Object.entries(pr).sort((a,b)=>b[1]-a[1]).slice(0,8);const mx=sr[0]?sr[0][1]:1;
+  document.getElementById('tprd').innerHTML=sr.length?sr.map(([n,r])=>`<div style="margin-bottom:.75rem"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span style="font-weight:500">${n}</span><span style="color:var(--text2)">${cfg.sarafu} ${fm(r)} | Faida: ${cfg.sarafu} ${fm(pp[n]||0)}</span></div><div class="pb"><div class="pf" style="width:${Math.round(r/mx*100)}%"></div></div></div>`).join(''):'<div style="font-size:13px;color:var(--text2)">Fanya mauzo kupata ripoti ya bidhaa.</div>';
+  const cp={};CATS.forEach(c=>cp[c]=0);S.forEach(s=>s.items&&s.items.forEach(i=>{const p=P.find(x=>x.id===i.pid);if(p)cp[p.cat]=(cp[p.cat]||0)+(i.sell-i.buy)*i.qty}));
+  const ac=Object.entries(cp).filter(([,v])=>v>0);
+  if(ch3)ch3.destroy();
+  if(ac.length)ch3=new Chart(document.getElementById('c3'),{type:'bar',data:{labels:ac.map(([k])=>k),datasets:[{data:ac.map(([,v])=>v),backgroundColor:'#1D9E75',borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>v>=1000?(v/1000)+'k':v}}}}});
+  const mo={};S.forEach(s=>{if(s.date){const m=s.date.substring(0,7);mo[m]=(mo[m]||0)+revS(s)}});
+  const sm=Object.keys(mo).sort().slice(-6);
+  if(ch4)ch4.destroy();
+  if(sm.length)ch4=new Chart(document.getElementById('c4'),{type:'line',data:{labels:sm,datasets:[{data:sm.map(m=>mo[m]),borderColor:'#BA7517',backgroundColor:'rgba(186,117,23,0.1)',tension:.4,fill:true,pointRadius:5,pointBackgroundColor:'#BA7517',borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>v>=1000?(v/1000)+'k':v}}}}});
+  const rc=[];
+  const lm=P.filter(p=>p.buy>0&&(p.sell-p.buy)/p.buy<0.15);if(lm.length)rc.push({t:'⚠ Bidhaa zenye Margin Ndogo (<15%)',b:`${lm.map(p=>`${p.jina} (${Math.round((p.sell-p.buy)/p.buy*100)}%)`).join(', ')}. Ongeza bei ya kuuzia ili kuincrease faida.`});
+  const out=P.filter(p=>p.stock===0);if(out.length)rc.push({t:'🚨 Hasara ya Mauzo — Bidhaa Zimekwisha',b:`${out.map(p=>p.jina).join(', ')} zimekwisha. Kila siku bila hizi ni hasara halisi ya mapato. Agiza haraka.`});
+  const cr={};S.forEach(s=>s.items&&s.items.forEach(i=>{const p=P.find(x=>x.id===i.pid);if(p)cr[p.cat]=(cr[p.cat]||0)+revS(s)}));
+  const bc=Object.entries(cr).sort((a,b)=>b[1]-a[1])[0];if(bc)rc.push({t:`📈 Ongeza Aina za Bidhaa — ${bc[0]}`,b:`Kategori ya ${bc[0]} inafanya vizuri zaidi (${cfg.sarafu} ${fm(bc[1])} mapato). Ingiza aina mpya ili wateja wawe na chaguo zaidi.`});
+  const vip=C.filter(c=>c.status==='VIP');if(vip.length)rc.push({t:`⭐ Wateja VIP ${vip.length} — Wajali`,b:`${vip.map(c=>c.jina).join(', ')}. Wapelekee ujumbe wa WhatsApp wiki hii ukiwaarifu bidhaa mpya au ofa. Wateja VIP ndiyo nguzo ya biashara.`});
+  const dc={0:0,1:0,2:0,3:0,4:0,5:0,6:0};S.forEach(s=>{if(s.date)dc[new Date(s.date).getDay()]++});
+  const bd=Object.entries(dc).sort((a,b)=>b[1]-a[1])[0];
+  const dn=['Jumapili','Jumatatu','Jumanne','Jumatano','Alhamisi','Ijumaa','Jumamosi'];
+  if(bd&&bd[1]>0)rc.push({t:`📅 Siku Bora ya Biashara: ${dn[bd[0]]}`,b:`${dn[bd[0]]} ndiyo siku yenye wateja wengi zaidi. Hakikisha stock kamili na uwe tayari siku hiyo. Tuma ujumbe wa ofa siku moja kabla.`});
+  if(!rc.length)rc.push({t:'💡 Anza Kufanya Mauzo',b:'Ingiza bidhaa na fanya mauzo ili mfumo utoe mapendekezo yanayofaa biashara yako hasa.'});
+  document.getElementById('recs').innerHTML=rc.map(r=>`<div class="ins"><div class="int">${r.t}</div><div class="inb">${r.b}</div></div>`).join('');
+}
+
+function checkWkly(){
+  const last=gls('dkwk');const diff=last?(new Date()-new Date(last))/(1000*60*60*24):8;
+  if(diff<7)return;
+  const wa=new Date();wa.setDate(wa.getDate()-7);
+  const ws=S.filter(s=>new Date(s.date)>=wa);if(!ws.length)return;
+  const pr={};ws.forEach(s=>s.items&&s.items.forEach(i=>{pr[i.jina]=(pr[i.jina]||0)+i.sell*i.qty}));
+  const t3=Object.entries(pr).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  const wr=ws.reduce((a,s)=>a+revS(s),0),wp=ws.reduce((a,s)=>a+prfS(s),0);
+  document.getElementById('wpc').innerHTML=`<div style="font-size:14px;font-weight:700;margin-bottom:.375rem">🎉 Muhtasari wa Wiki — Hongera!</div><div style="font-size:13px;color:var(--text2);margin-bottom:.75rem">Mauzo ${ws.length} | Mapato ${cfg.sarafu} ${fm(wr)} | Faida ${cfg.sarafu} ${fm(wp)}</div>${t3.length?`<div style="font-size:12px;font-weight:700;margin-bottom:.25rem">🏆 Bidhaa Bora Wiki Hii:</div>${t3.map(([n,r],i)=>`<div style="font-size:13px;padding:2px 0">${['🥇','🥈','🥉'][i]} ${n} — ${cfg.sarafu} ${fm(r)}</div>`).join('')}`:''}<div style="margin-top:.75rem;font-size:12px;color:#92400E;font-weight:600">Endelea na nguvu! ${new Date().toLocaleDateString('sw-TZ',{weekday:'long',day:'numeric',month:'long'})} — Biashara inakua! 💪</div>`;
+  document.getElementById('wpop').style.display='block';
+  sls('dkwk',new Date().toISOString());
+}
+
+function clearAll(){if(!confirm('Una uhakika wa kufuta data YOTE ya ndani?\n\nHii haiwezi kurudishwa!'))return;P=[];S=[];C=[];sls('dkp',P);sls('dks',S);sls('dkc',C);addLog('Data yote ya ndani imefutwa','err');toast('Data yote imefutwa. Pakia kutoka Apps Script.');alert('Imefutwa. Bonyeza "Pakia Cloud" kupata data yako toka Google Sheets.')}
+
+init();
+</script>
+</body>
+</html>
